@@ -101,67 +101,21 @@ class TrackDetection:
 
         return res
 
-        # edged = cv2.Canny(img, 50, 150)
-        #
-        # # setting all sorts of thresholds
-        # x_thresh = td_utils.abs_sobel_thresh(img, orient="x", thresh_min=20, thresh_max=180)
-        # mag_thresh = td_utils.mag_thresh(img, sobel_kernel=3, thresh=(15, 170))
-        # dir_thresh = td_utils.dir_threshold(img, sobel_kernel=3, thresh=(np.pi / 3., np.pi / 2.))
-        # hls_thresh = td_utils.hls_select(img, thresh=(160, 255))
-        # lab_thresh = td_utils.lab_select(img, thresh=(155, 210))
-        # luv_thresh = td_utils.luv_select(img, thresh=(225, 255))
-        #
-        # fig, _ax = plt.subplots(2, 3, figsize=(15, 6))
-        # # for ax in _ax:  # remove the underlying axes
-        # #     ax.set_xticks([]), ax.set_yticks([])
-        # ax = _ax.flatten()
-        #
-        # res = np.zeros_like(x_thresh)
-        # res[(x_thresh == 1)] = 1
-        # ax[0].imshow(res, cmap="gray")
-        # ax[0].set_xlabel("x_thresh & mag_thresh")
-        #
-        # res = np.zeros_like(x_thresh)
-        # res[(dir_thresh == 1)] = 1
-        # ax[1].imshow(res, cmap="gray")
-        # ax[1].set_xlabel("dir_thresh & hls_thresh")
-        #
-        # res = np.zeros_like(x_thresh)
-        # res[lab_thresh == 1] = 1
-        # ax[2].imshow(res, cmap="gray")
-        # ax[2].set_xlabel("lab_thresh")
-        #
-        # res = np.zeros_like(x_thresh)
-        # res[luv_thresh == 1] = 1
-        # ax[3].imshow(res, cmap="gray")
-        # ax[3].set_xlabel("luv_thresh")
-        #
-        # # Thresholding combination
-        # res = np.zeros_like(x_thresh)
-        # res[((x_thresh == 1) & (mag_thresh == 1))
-        #     | ((dir_thresh == 1) & (hls_thresh == 1))
-        #     # | (lab_thresh == 1)
-        #     # | (luv_thresh == 1)
-        #     & (edged == 255)] = 1
-        #
-        # ax[4].imshow(res, cmap="gray")
-        # ax[5].imshow(edged, cmap="gray")
-        # plt.tight_layout(), plt.show()
-        # return res
-
     @staticmethod
     def _apply_roi_mask(img, up_left: (int, int), up_right: (int, int), bot_left: (int, int), bot_right: (int, int)):
         roi_vertices = np.array([bot_left, up_left, up_right, bot_right])
 
         mask = np.zeros_like(img)
         # mask = cv2.polylines(mask, [roi_vertices], True, (255, 255, 255), 2)
-        mask = cv2.fillPoly(mask, [roi_vertices], (255, 255, 255))  # 用于求 ROI
+        mask = cv2.fillPoly(mask, [roi_vertices], (255, 255, 255))  # mark ROI as white
         res = cv2.bitwise_and(mask, img)
         return res
 
     def _process(self, img: np.ndarray):
         fig, _ax = plt.subplots(2, 3, figsize=(15, 6))
         ax = _ax.flatten()
+        for _ax in ax:  # remove x/y ticks & tick labels
+            _ax.set_xticks([]), _ax.set_yticks([])
 
         img_thresh = self._apply_threshold(img=img)
         img_thresh_roi = self._apply_roi_mask(
@@ -181,14 +135,19 @@ class TrackDetection:
         self.left_line.update(left_fit)
         self.right_line.update(right_fit)
 
-        img_area, gre1 = td_utils.draw_area(img, img_thresh_roi_trans, self.trans_dst_2_src, left_fit, right_fit)
+        img_area, gre1, mask_track, mask_expand = td_utils.draw_area(
+            img=img, img_binary_trans=img_thresh_roi_trans,
+            trans_dst_2_src=self.trans_dst_2_src,
+            left_fit=left_fit, right_fit=right_fit)
 
-        ax[0].imshow(img_thresh, cmap="gray")
-        ax[1].imshow(img_thresh_roi, cmap="gray")
-        ax[2].imshow(img_thresh_roi_trans, cmap="gray")
-        ax[3].imshow(img_area)
-        ax[4].remove(), ax[5].remove()
-        plt.tight_layout(), plt.show()
+        ax[0].imshow(img_thresh, cmap="gray"), ax[0].set_xlabel("(a) Edge Detection")
+        ax[1].imshow(img_thresh_roi, cmap="gray"), ax[1].set_xlabel("(b) ROI-Only Masked")
+        ax[2].imshow(img_thresh_roi_trans, cmap="gray"), ax[2].set_xlabel("(c) Perspective Transformed")
+        ax[3].imshow(mask_track, cmap="gray"), ax[3].set_xlabel("(d) Result - Track Region")
+        ax[4].imshow(mask_expand, cmap="gray"), ax[4].set_xlabel("(e) Result - Track Expanded Region")
+        ax[5].imshow(img_area), ax[5].set_xlabel("(f) Result - Overall Illustration")
+        plt.tight_layout()
+        plt.show()
 
 
 if "__main__" == __name__:

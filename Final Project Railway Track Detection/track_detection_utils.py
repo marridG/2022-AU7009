@@ -151,8 +151,8 @@ def find_line(img_binary_trans: np.ndarray):
     righty = nonzeroy[right_lane_inds]
 
     # Fit a second order polynomial to each
-    left_fit = np.polyfit(lefty, leftx, 3)
-    right_fit = np.polyfit(righty, rightx, 3)
+    left_fit = np.polyfit(x=lefty, y=leftx, deg=3)
+    right_fit = np.polyfit(x=righty, y=rightx, deg=3)
 
     return left_fit, right_fit, left_lane_inds, right_lane_inds
 
@@ -188,49 +188,54 @@ def find_line_by_previous(img_binary_trans, left_fit, right_fit):
 def expand(img):
     image = img
     height, width, _ = img.shape
-    _, green, _ = cv2.split(image)
-    s = np.sum(green, axis=1)
-    a = range(height)  # range(1080)
-    for i in reversed(a):
-        if s[i] < 200:
+    expand_mask = np.zeros((height, width))
+    _, green, _ = cv2.split(image)  # split the GREEN channel of RGB
+    s = np.sum(green, axis=1)  # sum up cnt of pure-green pixels (railway track) by width (in a row)
+    for i in reversed(range(height)):  # iterate from bottom row to top row
+        if s[i] < 200:  # skip rows that have insufficient railway-track pixels
             break
-        for j in range(width):  # range(1920):  # min x
+        for j in range(width):  # min x of the railway-track in the current row
             if green[i][j] == 255:
                 break
-        for k in reversed(range(width)):  # reversed(range(1920)):  # max x
+        for k in reversed(range(width)):  # max x of the railway-track in the current row
             if green[i][k] == 255:
                 break
-        for l in range(int(s[i] / 255)):  # s[i]/255  the number
+        for l in range(int(s[i] / 255)):  # expand the railway-track region
+            # from left
             image[i, j - l, 2] = 255
-        for l in range(int(s[i] / 255)):
+            expand_mask[i, j - l] = 255
+            # from right
             image[i, k + l, 2] = 255
+            expand_mask[i, k + l] = 255
 
-    return image
+    return image, expand_mask
 
 
-def draw_area(img, binary_warped, trans_dst_2_src, left_fit, right_fit):
+def draw_area(img, img_binary_trans, trans_dst_2_src, left_fit, right_fit):
     # Generate x and y values for plotting
-    ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
+    ploty = np.linspace(0, img_binary_trans.shape[0] - 1, img_binary_trans.shape[0])
     # left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     # right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
     left_fitx = left_fit[0] * ploty ** 3 + left_fit[1] * ploty ** 2 + left_fit[2] * ploty + left_fit[3]
     right_fitx = right_fit[0] * ploty ** 3 + right_fit[1] * ploty ** 2 + right_fit[2] * ploty + right_fit[3]
     # Create an image to draw the lines on
-    warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
-    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+    mask_track = np.zeros_like(img_binary_trans).astype(np.uint8)
+    color_warp = np.dstack((mask_track, mask_track, mask_track))
 
     # Recast the x and y points into usable format for cv2.fillPoly()
     pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
     pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
-    pts = np.hstack((pts_left, pts_right))
+    pts = np.hstack((pts_left, pts_right))  # of shape (1, pt_cnt, 2)
 
     # Draw the lane onto the warped blank image
     cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+    cv2.fillPoly(mask_track, np.int_([pts]), 255)
 
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     img = np.array(img)
     newwarp = cv2.warpPerspective(color_warp, trans_dst_2_src, (img.shape[1], img.shape[0]))
-    newwarp = expand(newwarp)
+    newwarp, mask_expand = expand(newwarp)
+    mask_track = cv2.warpPerspective(mask_track, trans_dst_2_src, (img.shape[1], img.shape[0]))
     # Combine the result with the original image
     result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
-    return result, newwarp
+    return result, newwarp, mask_track, mask_expand
