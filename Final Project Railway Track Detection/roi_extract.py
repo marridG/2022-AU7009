@@ -1,15 +1,16 @@
-from typing import List
 import os
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
 
+import video_handler
+
 
 class ROIExtract:
     def __init__(self,
                  video_path: str,
-                 res_dir: str = "res", temp_dir: str = "temp", frames_dir: str = "frames",
+                 res_dir: str = "res", temp_dir: str = "temp",
                  roi_len_top: int = 30,
                  roi_ratio_bottom: float = 0.6,
                  _debug: bool = False,
@@ -18,16 +19,12 @@ class ROIExtract:
         assert os.path.exists(video_path)
         self.video_path = video_path
         self.video_alias = "VID-" + os.path.splitext(os.path.split(video_path)[-1])[0]  # "data/1.mp4" -> "VID-1"
-        self.video_frame_cnt = -1
+        self.video_handler = video_handler.VideoHandler(video_path=self.video_path)
 
         assert os.path.exists(res_dir)
         self.res_dir = res_dir
         assert os.path.exists(temp_dir)
         self.temp_dir = temp_dir
-        assert os.path.exists(frames_dir)
-        self.frames_dir = os.path.join(frames_dir, self.video_alias)
-        if os.path.exists(self.frames_dir) is False:
-            os.mkdir(self.frames_dir)
 
         assert roi_len_top > 1  # width in pixel of the top edge of the trapezoid-shaped ROI
         self.roi_len_top = roi_len_top
@@ -39,7 +36,6 @@ class ROIExtract:
         self._ROI_VERSION = _roi_version
 
         self._MID_RES_FN_TEMPLATE = {
-            "frames": os.path.join(self.frames_dir, self.video_alias + "-0_frame_%d.png"),
             "optical_flow": os.path.join(self.temp_dir, self.video_alias + "-1_optical_flow.png"),
             "roi_details": os.path.join(self.temp_dir, self.video_alias
                                         + "-2_roi_details"
@@ -67,36 +63,6 @@ class ROIExtract:
                                                + "__ratio=" + ("%.3f" % self.roi_ratio_bottom)
                                                + ".npy"),
         }
-
-    def _save_frames(self):
-        print("Start Saving Frames of \"%s\" ..." % self.video_path)
-        cap = cv2.VideoCapture(self.video_path)
-        ret, _frame = cap.read()
-        _frame_idx = 0
-        while True:
-            res_fn = self._MID_RES_FN_TEMPLATE["frames"] % _frame_idx
-            cv2.imwrite(filename=res_fn, img=_frame)
-            ret, _frame = cap.read()
-            if not ret:
-                print("=== All %d Frames are Saved to: \"%s\"" % (_frame_idx + 1, self.temp_dir))
-                break
-            _frame_idx += 1
-
-        self.video_frame_cnt = _frame_idx + 1
-
-    def _get_frame_by_idx(self, frame_idx: int) -> np.ndarray:
-        _frames_fn_cnt = len(os.listdir(self.frames_dir))
-        res_fn = self._MID_RES_FN_TEMPLATE["frames"] % frame_idx
-        _err_msg = "Frame Index Out-of-Range. Attempt to get #%d out of %d Frames"
-
-        if (self._USE_CACHE is True) and (1 < _frames_fn_cnt):
-            self.video_frame_cnt = _frames_fn_cnt
-        else:
-            self._save_frames()
-
-        if frame_idx >= self.video_frame_cnt - 1 or os.path.exists(res_fn) is False:
-            raise IndexError(_err_msg % (self.video_frame_cnt, frame_idx))
-        return cv2.imread(res_fn)
 
     def _optical_flow(self) -> np.ndarray:
         # reference: https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html
@@ -388,7 +354,7 @@ class ROIExtract:
         for _ax_idx, _frame_idx, _title in zip(
                 [2, 3], [frame_idx_simple, frame_idx_hard], ["(c) ROI Example", "(d) ROI Example"]
         ):
-            img = self._get_frame_by_idx(frame_idx=_frame_idx)
+            img = self.video_handler.get_frame_by_idx(frame_idx=_frame_idx)
             for __from_idx, __end_idx in [(2, 0), (0, 1), (1, 3)]:  # up-left/up-right/bot-left/bot-right vertices;
                 cv2.line(img,
                          (ori[__from_idx, 0], ori[__from_idx, 1]),
