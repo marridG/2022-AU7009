@@ -16,10 +16,14 @@ class ROIExtract:
                  _debug: bool = False,
                  _use_cache: bool = True,
                  _roi_version: int = 2):
+        self._DEBUG = _debug
+        self._USE_CACHE = (_debug is False) and _use_cache
+        self._ROI_VERSION = _roi_version
+
         assert os.path.exists(video_path)
         self.video_path = video_path
         self.video_alias = "VID-" + os.path.splitext(os.path.split(video_path)[-1])[0]  # "data/1.mp4" -> "VID-1"
-        self.video_handler = video_handler.VideoHandler(video_path=self.video_path)
+        self.video_handler = video_handler.VideoHandler(video_path=self.video_path, _use_cache=self._USE_CACHE )
 
         assert os.path.exists(res_dir)
         self.res_dir = res_dir
@@ -30,10 +34,6 @@ class ROIExtract:
         self.roi_len_top = roi_len_top
         assert 0 < roi_ratio_bottom < 1  # shrinkage ratio of the bottom edge of the trapezoid-shaped ROI
         self.roi_ratio_bottom = roi_ratio_bottom
-
-        self._DEBUG = _debug
-        self._USE_CACHE = (_debug is False) and _use_cache
-        self._ROI_VERSION = _roi_version
 
         self._MID_RES_FN_TEMPLATE = {
             "optical_flow": os.path.join(self.temp_dir, self.video_alias + "-1_optical_flow.png"),
