@@ -22,8 +22,8 @@ class ROIExtract:
 
         assert os.path.exists(video_path)
         self.video_path = video_path
-        self.video_alias = "VID-" + os.path.splitext(os.path.split(video_path)[-1])[0]  # "data/1.mp4" -> "VID-1"
-        self.video_handler = video_handler.VideoHandler(video_path=self.video_path, _use_cache=self._USE_CACHE )
+        self.video_handler = video_handler.VideoHandler(video_path=self.video_path, _use_cache=self._USE_CACHE)
+        self.video_alias = self.video_handler.video_alias
 
         assert os.path.exists(res_dir)
         self.res_dir = res_dir
@@ -389,3 +389,4 @@ if "__main__" == __name__:
         obj = ROIExtract(video_path=file)
         # obj.get_roi()
         obj.get_roi_n_visualize(frame_idx_simple=f_simple, frame_idx_hard=f_hard)
+        print("========================================")
