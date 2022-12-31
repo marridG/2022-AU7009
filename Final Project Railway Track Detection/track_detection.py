@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 
+import video_handler
 import track_detection_utils as td_utils
 
 
@@ -60,9 +61,18 @@ class Line:
 
 
 class TrackDetection:
-    def __init__(self, img_set: List[np.ndarray], img_roi: np.ndarray):
-        self.img_set = img_set
-        self.img_cnt = len(img_set)
+    def __init__(self, video_path: str, img_roi: np.ndarray, res_dir: str = "res",
+                 _debug: bool = False, _use_cache: bool = True):
+        self._DEBUG = _debug
+        self._USE_CACHE = (_debug is False) and _use_cache
+
+        assert os.path.exists(video_path)
+        self.video_path = video_path
+        self.video_alias = "VID-" + os.path.splitext(os.path.split(video_path)[-1])[0]  # "data/1.mp4" -> "VID-1"
+        self.video_handler = video_handler.VideoHandler(video_path=self.video_path, _use_cache=self._USE_CACHE)
+
+        assert os.path.exists(res_dir)
+        self.res_dir = res_dir
 
         # ROI: (4,2), up-left / up-right / bot-left / bot-right
         self.img_roi_up_left = (int(img_roi[0, 0]), int(img_roi[0, 1]))
@@ -79,6 +89,14 @@ class TrackDetection:
             # up_left_dst=(0, 0), up_right_dst=(639, 0), bot_left_dst=(0, 367), bot_right_dst=(639, 367)
             up_left_dst=(150, 0), up_right_dst=(500, 0), bot_left_dst=(0, 367), bot_right_dst=(639, 367)
         )
+
+        self._MID_RES_FN_TEMPLATE = {
+            "res": os.path.join(self.res_dir, self.video_alias + "-3_track.mp4"),
+            "res_frame": os.path.join(self.res_dir, self.video_alias
+                                      + "-3_track"
+                                      + "__frame=%d"
+                                      + ".png"),
+        }
 
     @staticmethod
     def get_transform(
@@ -111,7 +129,8 @@ class TrackDetection:
         res = cv2.bitwise_and(mask, img)
         return res
 
-    def _process(self, img: np.ndarray):
+    def _process_frame(self, img: np.ndarray, _vis_title_only_frame_idx: int = -1):
+        do_visualize = (0 <= _vis_title_only_frame_idx)
         fig, _ax = plt.subplots(2, 3, figsize=(15, 6))
         ax = _ax.flatten()
         for _ax in ax:  # remove x/y ticks & tick labels
@@ -140,18 +159,28 @@ class TrackDetection:
             trans_dst_2_src=self.trans_dst_2_src,
             left_fit=left_fit, right_fit=right_fit)
 
-        ax[0].imshow(img_thresh, cmap="gray"), ax[0].set_xlabel("(a) Edge Detection")
-        ax[1].imshow(img_thresh_roi, cmap="gray"), ax[1].set_xlabel("(b) ROI-Only Masked")
-        ax[2].imshow(img_thresh_roi_trans, cmap="gray"), ax[2].set_xlabel("(c) Perspective Transformed")
-        ax[3].imshow(mask_track, cmap="gray"), ax[3].set_xlabel("(d) Result - Track Region")
-        ax[4].imshow(mask_expand, cmap="gray"), ax[4].set_xlabel("(e) Result - Track Expanded Region")
-        ax[5].imshow(img_area), ax[5].set_xlabel("(f) Result - Overall Illustration")
-        plt.tight_layout()
-        plt.show()
+        if do_visualize:
+            ax[0].imshow(img_thresh, cmap="gray"), ax[0].set_xlabel("(a) Edge Detection")
+            ax[1].imshow(img_thresh_roi, cmap="gray"), ax[1].set_xlabel("(b) ROI-Only Masked")
+            ax[2].imshow(img_thresh_roi_trans, cmap="gray"), ax[2].set_xlabel("(c) Perspective Transformed")
+            ax[3].imshow(mask_track, cmap="gray"), ax[3].set_xlabel("(d) Result - Track Region")
+            ax[4].imshow(mask_expand, cmap="gray"), ax[4].set_xlabel("(e) Result - Track Expanded Region")
+            ax[5].imshow(img_area), ax[5].set_xlabel("(f) Result - Overall Illustration")
+            fig.suptitle("Track Detection for \"%s\" (Frame #%d)"
+                         % (os.path.split(self.video_path)[-1], _vis_title_only_frame_idx))
+            plt.tight_layout()
+            if self._DEBUG is True:
+                plt.show()
+            else:
+                res_fn = self._MID_RES_FN_TEMPLATE["res_frame"] % _vis_title_only_frame_idx
+                plt.savefig(res_fn, dpi=200)
+
+    def process_n_visualize_frame(self, frame_idx: int):
+        frame = self.video_handler.get_frame_by_idx(frame_idx=frame_idx)
+        self._process_frame(img=frame, _vis_title_only_frame_idx=frame_idx)
 
 
 if "__main__" == __name__:
-    im = cv2.imread("frames/VID-4/VID-4-0_frame_0.png")
     im_roi = np.load("temp/VID-4-2_roi_res_arr_scaled__ver=2__len=30__ratio=0.600.npy")
-    obj = TrackDetection(img_set=[im], img_roi=im_roi)
-    obj._process(im)
+    obj = TrackDetection(video_path="data/4.mp4", img_roi=im_roi)
+    obj.process_n_visualize_frame(frame_idx=0)
