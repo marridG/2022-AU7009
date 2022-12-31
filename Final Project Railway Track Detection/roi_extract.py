@@ -13,7 +13,8 @@ class ROIExtract:
                  roi_len_top: int = 30,
                  roi_ratio_bottom: float = 0.6,
                  _debug: bool = False,
-                 _use_cache: bool = True):
+                 _use_cache: bool = True,
+                 _roi_version: int = 2):
         assert os.path.exists(video_path)
         self.video_path = video_path
         self.video_alias = "VID-" + os.path.splitext(os.path.split(video_path)[-1])[0]  # "data/1.mp4" -> "VID-1"
@@ -33,25 +34,39 @@ class ROIExtract:
         assert 0 < roi_ratio_bottom < 1  # shrinkage ratio of the bottom edge of the trapezoid-shaped ROI
         self.roi_ratio_bottom = roi_ratio_bottom
 
+        self._DEBUG = _debug
+        self._USE_CACHE = (_debug is False) and _use_cache
+        self._ROI_VERSION = _roi_version
+
         self._MID_RES_FN_TEMPLATE = {
             "frames": os.path.join(self.frames_dir, self.video_alias + "-0_frame_%d.png"),
             "optical_flow": os.path.join(self.temp_dir, self.video_alias + "-1_optical_flow.png"),
-            "roi_details": os.path.join(self.temp_dir, self.video_alias + "-2_roi_details"
-                                                                          "__len=" + ("%d" % self.roi_len_top)
-                                        + "__ratio=" + ("%.3f" % self.roi_ratio_bottom) + ".png"),
-            "roi_res": os.path.join(self.res_dir, self.video_alias + "-2_roi_res"
-                                                                     "__len=" + ("%d" % self.roi_len_top)
-                                    + "__ratio=" + ("%.3f" % self.roi_ratio_bottom) + "__frame=%d_%d.png"),
-            "roi_res_arr_ori": os.path.join(self.temp_dir, self.video_alias + "-2_roi_res_arr_ori"
-                                                                              "__len=" + ("%d" % self.roi_len_top)
-                                            + "__ratio=" + ("%.3f" % self.roi_ratio_bottom) + ".npy"),
-            "roi_res_arr_scaled": os.path.join(self.temp_dir, self.video_alias + "-2_roi_res_arr_scaled"
-                                                                                 "__len=" + ("%d" % self.roi_len_top)
-                                               + "__ratio=" + ("%.3f" % self.roi_ratio_bottom) + ".npy"),
+            "roi_details": os.path.join(self.temp_dir, self.video_alias
+                                        + "-2_roi_details"
+                                        + "__ver=" + ("%d" % self._ROI_VERSION)
+                                        + "__len=" + ("%d" % self.roi_len_top)
+                                        + "__ratio=" + ("%.3f" % self.roi_ratio_bottom)
+                                        + ".png"),
+            "roi_res": os.path.join(self.res_dir, self.video_alias
+                                    + "-2_roi_res"
+                                    + "__ver=" + ("%d" % self._ROI_VERSION)
+                                    + "__len=" + ("%d" % self.roi_len_top)
+                                    + "__ratio=" + ("%.3f" % self.roi_ratio_bottom)
+                                    + "__frame=%d_%d"
+                                    + ".png"),
+            "roi_res_arr_ori": os.path.join(self.temp_dir, self.video_alias
+                                            + "-2_roi_res_arr_ori"
+                                            + "__ver=" + ("%d" % self._ROI_VERSION)
+                                            + "__len=" + ("%d" % self.roi_len_top)
+                                            + "__ratio=" + ("%.3f" % self.roi_ratio_bottom)
+                                            + ".npy"),
+            "roi_res_arr_scaled": os.path.join(self.temp_dir, self.video_alias
+                                               + "-2_roi_res_arr_scaled"
+                                               + "__ver=" + ("%d" % self._ROI_VERSION)
+                                               + "__len=" + ("%d" % self.roi_len_top)
+                                               + "__ratio=" + ("%.3f" % self.roi_ratio_bottom)
+                                               + ".npy"),
         }
-
-        self._DEBUG = _debug
-        self._USE_CACHE = (_debug is False) and _use_cache
 
     def _save_frames(self):
         print("Start Saving Frames of \"%s\" ..." % self.video_path)
@@ -265,9 +280,7 @@ class ROIExtract:
         else:
             rightmost_x = img.shape[1] - 1
 
-        # draw ROI
-        roi_pt_upper_left = (pt_vanish_x - self.roi_len_top // 2, pt_vanish_y)
-        roi_pt_upper_right = (pt_vanish_x + self.roi_len_top // 2, pt_vanish_y)
+        # calculate ROI: bottom loc + top len: triangle -> trapezoid
         roi_pt_bottom_left = (leftmost_x, img.shape[0] - 1)
         roi_pt_bottom_right = (rightmost_x, img.shape[0] - 1)
         roi_pt_bottom_left_scaled = (
@@ -278,6 +291,29 @@ class ROIExtract:
             rightmost_x + int(self.roi_ratio_bottom * (pt_vanish_x - rightmost_x)),
             img.shape[0] - 1
         )
+        if 1 == self._ROI_VERSION:
+            roi_pt_upper_left = (pt_vanish_x - self.roi_len_top // 2, pt_vanish_y)
+            roi_pt_upper_right = (pt_vanish_x + self.roi_len_top // 2, pt_vanish_y)
+            roi_pt_upper_left_scaled = (pt_vanish_x - self.roi_len_top // 2, pt_vanish_y)
+            roi_pt_upper_right_scaled = (pt_vanish_x + self.roi_len_top // 2, pt_vanish_y)
+        elif 2 == self._ROI_VERSION:
+            _cal_delta_y = lambda delta_x, full_x, full_y: int(delta_x * full_y * 1. / full_x)
+            roi_delta_y = _cal_delta_y(
+                delta_x=self.roi_len_top,
+                full_x=roi_pt_bottom_right[0] - roi_pt_bottom_left[0],
+                full_y=img.shape[0] - 1 - pt_vanish_y)
+            roi_delta_y_scaled = _cal_delta_y(
+                delta_x=self.roi_len_top,
+                full_x=roi_pt_bottom_right_scaled[0] - roi_pt_bottom_left_scaled[0],
+                full_y=img.shape[0] - 1 - pt_vanish_y)
+            roi_pt_upper_left = (pt_vanish_x - self.roi_len_top // 2, pt_vanish_y + roi_delta_y)
+            roi_pt_upper_right = (pt_vanish_x + self.roi_len_top // 2, pt_vanish_y + roi_delta_y)
+            roi_pt_upper_left_scaled = (pt_vanish_x - self.roi_len_top // 2, pt_vanish_y + roi_delta_y_scaled)
+            roi_pt_upper_right_scaled = (pt_vanish_x + self.roi_len_top // 2, pt_vanish_y + roi_delta_y_scaled)
+        else:
+            raise NotImplementedError("Unknown ROI_VERSION: \"%d\". Supported: 1 or 2" % self._ROI_VERSION)
+
+        # draw ROI - ori
         cv2.line(img_lines,
                  (roi_pt_bottom_left[0], roi_pt_bottom_left[1]),
                  (roi_pt_upper_left[0], roi_pt_upper_left[1]),
@@ -285,17 +321,22 @@ class ROIExtract:
         cv2.line(img_lines,
                  (roi_pt_upper_left[0], roi_pt_upper_left[1]),
                  (roi_pt_upper_right[0], roi_pt_upper_right[1]),
-                 color=(0, 0, 255), thickness=3, lineType=cv2.LINE_AA)  # red
+                 color=(0, 0, 255), thickness=1, lineType=cv2.LINE_AA)  # red
         cv2.line(img_lines,
                  (roi_pt_upper_right[0], roi_pt_upper_right[1]),
                  (roi_pt_bottom_right[0], roi_pt_bottom_right[1]),
                  color=(0, 0, 255), thickness=1, lineType=cv2.LINE_AA)  # red
+        # draw ROI - scaled
         cv2.line(img_lines,
                  (roi_pt_bottom_left_scaled[0], roi_pt_bottom_left_scaled[1]),
-                 (roi_pt_upper_left[0], roi_pt_upper_left[1]),
+                 (roi_pt_upper_left_scaled[0], roi_pt_upper_left_scaled[1]),
                  color=(0, 0, 255), thickness=3, lineType=cv2.LINE_AA)  # red
         cv2.line(img_lines,
-                 (roi_pt_upper_right[0], roi_pt_upper_right[1]),
+                 (roi_pt_upper_left_scaled[0], roi_pt_upper_left_scaled[1]),
+                 (roi_pt_upper_right_scaled[0], roi_pt_upper_right_scaled[1]),
+                 color=(0, 0, 255), thickness=3, lineType=cv2.LINE_AA)  # red
+        cv2.line(img_lines,
+                 (roi_pt_upper_right_scaled[0], roi_pt_upper_right_scaled[1]),
                  (roi_pt_bottom_right_scaled[0], roi_pt_bottom_right_scaled[1]),
                  color=(0, 0, 255), thickness=3, lineType=cv2.LINE_AA)  # red
 
@@ -307,7 +348,7 @@ class ROIExtract:
             roi_pt_upper_left, roi_pt_upper_right, roi_pt_bottom_left, roi_pt_bottom_right
         ], dtype=int)
         res_arr_scaled = np.array([
-            roi_pt_upper_left, roi_pt_upper_right, roi_pt_bottom_left_scaled, roi_pt_bottom_right_scaled
+            roi_pt_upper_left_scaled, roi_pt_upper_right_scaled, roi_pt_bottom_left_scaled, roi_pt_bottom_right_scaled
         ], dtype=int)
         res_arr_fn_ori = self._MID_RES_FN_TEMPLATE["roi_res_arr_ori"]
         res_arr_fn_scaled = self._MID_RES_FN_TEMPLATE["roi_res_arr_scaled"]
@@ -362,7 +403,7 @@ class ROIExtract:
             ax[_ax_idx].imshow(img)
             ax[_ax_idx].set_xlabel(_title + " (Frame #%d)" % _frame_idx)
 
-        fig.suptitle("ROI Extraction for %s" % os.path.split(self.video_path)[-1])
+        fig.suptitle("ROI Extraction for \"%s\"" % os.path.split(self.video_path)[-1])
         plt.tight_layout()
         # plt.show()
         res_fn = self._MID_RES_FN_TEMPLATE["roi_res"] % (frame_idx_simple, frame_idx_hard)
