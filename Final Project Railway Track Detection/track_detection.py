@@ -1,5 +1,6 @@
 import os
 from typing import List
+from tqdm import tqdm
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
@@ -14,19 +15,19 @@ class Line:
         # was the line detected in the last iteration?
         self.detected = False
         # x values of the last n fits of the line
-        self.recent_fitted = [np.array([False])]
+        self.recent_fitted = []  # [np.array([False])]
         # average x values of the fitted line over the last n iterations
         self.bestx = None
         # polynomial coefficients averaged over the last n iterations
         self.best_fit = None
         # polynomial coefficients for the most recent fit
-        self.current_fit = [np.array([False])]
+        self.current_fit = []  # [np.array([False])]
         # radius of curvature of the line in some units
         self.radius_of_curvature = None
         # distance in meters of vehicle center from the line
         self.line_base_pos = None
         # difference in fit coefficients between last and new fits
-        self.diffs = np.array([0, 0, 0, 0], dtype='float')
+        self.diffs = np.array([0, 0, 0, 0], dtype="float")
         # x values for detected line pixels
         self.allx = None
         # y values for detected line pixels
@@ -61,18 +62,20 @@ class Line:
 
 
 class TrackDetection:
-    def __init__(self, video_path: str, img_roi: np.ndarray, res_dir: str = "res",
+    def __init__(self, video_path: str, img_roi: np.ndarray, res_dir: str = "res", temp_dir: str = "temp",
                  _debug: bool = False, _use_cache: bool = True):
         self._DEBUG = _debug
         self._USE_CACHE = (_debug is False) and _use_cache
 
         assert os.path.exists(video_path)
         self.video_path = video_path
-        self.video_alias = "VID-" + os.path.splitext(os.path.split(video_path)[-1])[0]  # "data/1.mp4" -> "VID-1"
         self.video_handler = video_handler.VideoHandler(video_path=self.video_path, _use_cache=self._USE_CACHE)
+        self.video_alias = self.video_handler.video_alias
 
         assert os.path.exists(res_dir)
         self.res_dir = res_dir
+        assert os.path.exists(temp_dir)
+        self.temp_dir = temp_dir
 
         # ROI: (4,2), up-left / up-right / bot-left / bot-right
         self.img_roi_up_left = (int(img_roi[0, 0]), int(img_roi[0, 1]))
@@ -91,11 +94,16 @@ class TrackDetection:
         )
 
         self._MID_RES_FN_TEMPLATE = {
-            "res": os.path.join(self.res_dir, self.video_alias + "-3_track.mp4"),
-            "res_frame": os.path.join(self.res_dir, self.video_alias
-                                      + "-3_track"
-                                      + "__frame=%d"
-                                      + ".png"),
+            "res_vid": os.path.join(self.res_dir, self.video_alias + "-3_track.mp4"),
+            "res_vid_test": os.path.join(self.res_dir, self.video_alias + "-3_track__range=%d-%d-%d.mp4"),
+            "res_arr_all": os.path.join(self.temp_dir, self.video_alias + "-3_track_arr_all.npy"),
+            "res_arr_trans": os.path.join(self.temp_dir, self.video_alias + "-3_track_arr_trans.npy"),
+            "res_arr_mask_track": os.path.join(self.temp_dir, self.video_alias + "-3_track_arr_mask_track.npy"),
+            "res_arr_mask_expand": os.path.join(self.temp_dir, self.video_alias + "-3_track_arr_mask_expand.npy"),
+            "res_pic_frame": os.path.join(self.res_dir, self.video_alias
+                                          + "-3_track"
+                                          + "__frame=%d"
+                                          + ".png"),
         }
 
     @staticmethod
@@ -131,30 +139,44 @@ class TrackDetection:
 
     def _process_frame(self, img: np.ndarray, _vis_title_only_frame_idx: int = -1):
         do_visualize = (0 <= _vis_title_only_frame_idx)
-        fig, _ax = plt.subplots(2, 3, figsize=(15, 6))
-        ax = _ax.flatten()
-        for _ax in ax:  # remove x/y ticks & tick labels
-            _ax.set_xticks([]), _ax.set_yticks([])
+        if do_visualize:
+            fig, _ax = plt.subplots(2, 3, figsize=(15, 6))
+            ax = _ax.flatten()
+            for _ax in ax:  # remove x/y ticks & tick labels
+                _ax.set_xticks([]), _ax.set_yticks([])
 
         img_thresh = self._apply_threshold(img=img)
         img_thresh_roi = self._apply_roi_mask(
             img=img_thresh,
             up_left=self.img_roi_up_left, up_right=self.img_roi_up_right,
-            bot_left=self.img_roi_bot_left, bot_right=self.img_roi_bot_right)
+            bot_left=self.img_roi_bot_left, bot_right=self.img_roi_bot_right
+        )
         img_thresh_roi_trans = cv2.warpPerspective(src=img_thresh_roi, M=self.trans_src_2_dst,
                                                    dsize=img.shape[1::-1], flags=cv2.INTER_LINEAR)
         # perform detection
-        if self.left_line.detected and self.right_line.detected:
-            left_fit, right_fit, left_lane_inds, right_lane_inds = td_utils.find_line_by_previous(
+        if self.left_line.detected and self.right_line.detected:  # when is NOT 1-ST frame
+            _left_fit, _right_fit, _, _ = td_utils.find_line_by_previous(
                 img_thresh_roi_trans,
                 self.left_line.current_fit,
-                self.right_line.current_fit)
-        else:
-            left_fit, right_fit, left_lane_inds, right_lane_inds = td_utils.find_line(img_thresh_roi_trans)
+                self.right_line.current_fit
+            )
+            _, _, mask_track, _ = td_utils.draw_area(
+                img=img, img_binary_trans=img_thresh_roi_trans,
+                trans_dst_2_src=self.trans_dst_2_src,
+                left_fit=_left_fit, right_fit=_right_fit)
+            print(mask_track.nonzero()[0].size)
+            if 5000 < mask_track.nonzero()[0].size:
+                left_fit = _left_fit
+                right_fit = _right_fit
+            else:
+                left_fit = self.left_line.current_fit
+                right_fit = self.right_line.current_fit
+        else:  # when is 1-ST frame
+            left_fit, right_fit, _, _ = td_utils.find_line(img_thresh_roi_trans)
         self.left_line.update(left_fit)
         self.right_line.update(right_fit)
 
-        img_area, gre1, mask_track, mask_expand = td_utils.draw_area(
+        img_area, _, mask_track, mask_expand = td_utils.draw_area(
             img=img, img_binary_trans=img_thresh_roi_trans,
             trans_dst_2_src=self.trans_dst_2_src,
             left_fit=left_fit, right_fit=right_fit)
@@ -172,15 +194,87 @@ class TrackDetection:
             if self._DEBUG is True:
                 plt.show()
             else:
-                res_fn = self._MID_RES_FN_TEMPLATE["res_frame"] % _vis_title_only_frame_idx
+                res_fn = self._MID_RES_FN_TEMPLATE["res_pic_frame"] % _vis_title_only_frame_idx
                 plt.savefig(res_fn, dpi=200)
+                print("Frame-Related Illustration Saved: \"%s\"" % res_fn)
+
+        return img_area, img_thresh_roi_trans, mask_track, mask_expand
 
     def process_n_visualize_frame(self, frame_idx: int):
         frame = self.video_handler.get_frame_by_idx(frame_idx=frame_idx)
         self._process_frame(img=frame, _vis_title_only_frame_idx=frame_idx)
 
+    def process_video(self, frame_idx_start: int = 0, frame_idx_end: int = None) \
+            -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+        res = []  # frame_cnt * (height, width, 3)
+        res_trans = []  # frame_cnt * (height, width)
+        res_mask_track = []  # frame_cnt * (height, width)
+        res_mask_expand = []  # frame_cnt * (height, width)
+
+        if (0 != frame_idx_start) or (frame_idx_end is not None):
+            assert 0 <= frame_idx_start <= self.video_handler.video_frame_cnt - 1
+            if frame_idx_end is not None:
+                assert frame_idx_end <= self.video_handler.video_frame_cnt
+            else:
+                frame_idx_end = self.video_handler.video_frame_cnt
+            assert frame_idx_start <= frame_idx_end - 1
+            video_as_test = True
+        else:
+            frame_idx_end = self.video_handler.video_frame_cnt
+            video_as_test = False
+
+        _frame_idx_iterator = tqdm(range(frame_idx_start, frame_idx_end))
+        for _frame_idx in _frame_idx_iterator:
+            _frame = self.video_handler.get_frame_by_idx(frame_idx=_frame_idx)
+            _res, _res_trans, _res_mask_track, _res_mask_expand = self._process_frame(img=_frame)
+            res.append(_res)
+            res_trans.append(_res_trans)
+            res_mask_track.append(_res_mask_track)
+            res_mask_expand.append(_res_mask_expand)
+            # if 0 == _frame_idx % 20:
+            #     print("Processed Frame #%d" % _frame_idx)
+            _frame_idx += 1
+
+        res = np.array(res)  # (frame_cnt, height, width, 3)
+        res_trans = np.array(res_trans)  # (frame_cnt, height, width)
+        res_mask_track = np.array(res_mask_track)  # (frame_cnt, height, width)
+        res_mask_expand = np.array(res_mask_expand)  # (frame_cnt, height, width)
+
+        if video_as_test is True:
+            # save result (all, but as TEST) as a video
+            res_fn = self._MID_RES_FN_TEMPLATE["res_vid_test"] \
+                     % (frame_idx_start, frame_idx_end, self.video_handler.video_frame_cnt)
+            self.video_handler.frames_to_video(frames=res, res_path=res_fn)
+            print("Results (1 TEST Video) Saved")
+        else:
+            # save result (all) as a video
+            self.video_handler.frames_to_video(frames=res, res_path=self._MID_RES_FN_TEMPLATE["res_vid"])
+            # save result as arrays
+            np.save(file=self._MID_RES_FN_TEMPLATE["res_arr_all"], arr=res)
+            np.save(file=self._MID_RES_FN_TEMPLATE["res_arr_trans"], arr=res_trans)
+            np.save(file=self._MID_RES_FN_TEMPLATE["res_arr_mask_track"], arr=res_mask_track)
+            np.save(file=self._MID_RES_FN_TEMPLATE["res_arr_mask_expand"], arr=res_mask_expand)
+            print("Results (1 Video, 4 Arrays) Saved")
+
+        return res, res_trans, res_mask_track, res_mask_expand
+
 
 if "__main__" == __name__:
-    im_roi = np.load("temp/VID-4-2_roi_res_arr_scaled__ver=2__len=30__ratio=0.600.npy")
-    obj = TrackDetection(video_path="data/4.mp4", img_roi=im_roi)
-    obj.process_n_visualize_frame(frame_idx=0)
+    roi = np.load("temp/VID-4-2_roi_res_arr_scaled__ver=2__len=30__ratio=0.600.npy")
+    obj = TrackDetection(video_path="data/4.mp4", img_roi=roi)
+    # obj.process_n_visualize_frame(frame_idx=0)
+    obj.process_video(frame_idx_start=300, frame_idx_end=600)
+
+    # for file, roi_file, (f_simple, f_hard), video_flag in zip(
+    #         ["data/%d.mp4" % idx for idx in range(1, 8)],
+    #         ["temp/VID-%d-2_roi_res_arr_scaled__ver=2__len=30__ratio=0.600.npy" % idx for idx in range(1, 8)],
+    #         [(0, 2900), (0, 3700), (0, 1000), (900, 0), (1500, 100), (600, 2100), (0, 2200)],
+    #         [False, True, False, True, True, False, True]
+    # ):
+    #     roi = np.load(roi_file)
+    #     obj = TrackDetection(video_path=file, img_roi=roi)
+    #     obj.process_n_visualize_frame(frame_idx=f_simple)
+    #     obj.process_n_visualize_frame(frame_idx=f_hard)
+    #     if video_flag is True:
+    #         obj.process_video()
+    #     print("========================================")

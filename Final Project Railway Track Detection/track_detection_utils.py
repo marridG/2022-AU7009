@@ -162,17 +162,31 @@ def find_line_by_previous(img_binary_trans, left_fit, right_fit):
     nonzeroy = np.array(nonzero[0])
     nonzerox = np.array(nonzero[1])
     margin = 100
-    left_lane_inds = ((nonzerox > (left_fit[0] * (nonzeroy ** 3) + left_fit[1] * (nonzeroy ** 2) +
-                                   left_fit[2] * nonzeroy + left_fit[3] - margin)) & (
-                              nonzerox < (left_fit[0] * (nonzeroy ** 3) +
-                                          left_fit[1] * (nonzeroy ** 2) + left_fit[2] * nonzeroy + left_fit[
-                                              3] + margin)))
+    left_lane_inds = (
+            (nonzerox > (left_fit[0] * (nonzeroy ** 3)
+                         + left_fit[1] * (nonzeroy ** 2)
+                         + left_fit[2] * nonzeroy
+                         + left_fit[3]
+                         - margin))
+            & (nonzerox < (left_fit[0] * (nonzeroy ** 3) +
+                           left_fit[1] * (nonzeroy ** 2) +
+                           left_fit[2] * nonzeroy +
+                           left_fit[3]
+                           + margin))
+    )
 
-    right_lane_inds = ((nonzerox > (right_fit[0] * (nonzeroy ** 3) + right_fit[1] * (nonzeroy ** 2) +
-                                    right_fit[2] * nonzeroy + right_fit[3] - margin)) & (
-                               nonzerox < (right_fit[0] * (nonzeroy ** 3) +
-                                           right_fit[1] * (nonzeroy ** 2) + right_fit[2] * nonzeroy + right_fit[
-                                               3] + margin)))
+    right_lane_inds = (
+            (nonzerox > (right_fit[0] * (nonzeroy ** 3)
+                         + right_fit[1] * (nonzeroy ** 2)
+                         + right_fit[2] * nonzeroy
+                         + right_fit[3]
+                         - margin))
+            & (nonzerox < (right_fit[0] * (nonzeroy ** 3)
+                           + right_fit[1] * (nonzeroy ** 2)
+                           + right_fit[2] * nonzeroy
+                           + right_fit[3]
+                           + margin))
+    )
 
     # Again, extract left and right line pixel positions
     leftx = nonzerox[left_lane_inds]
@@ -190,8 +204,8 @@ def expand(img):
     height, width, _ = img.shape
     expand_mask = np.zeros((height, width))
     _, green, _ = cv2.split(image)  # split the GREEN channel of RGB
-    s = np.sum(green, axis=1)  # sum up cnt of pure-green pixels (railway track) by width (in a row)
-    for i in reversed(range(height)):  # iterate from bottom row to top row
+    s = np.sum(green, axis=1)  # sum up cnt of pure-green pixels (railway track) (by width) in a row
+    for i in reversed(range(height)):  # iterate (by height) from bottom row to top row
         if s[i] < 200:  # skip rows that have insufficient railway-track pixels
             break
         for j in range(width):  # min x of the railway-track in the current row
@@ -202,11 +216,13 @@ def expand(img):
                 break
         for l in range(int(s[i] / 255)):  # expand the railway-track region
             # from left
-            image[i, j - l, 2] = 255
-            expand_mask[i, j - l] = 255
+            if j - l >= 0:
+                image[i, j - l, 2] = 255
+                expand_mask[i, j - l] = 255
             # from right
-            image[i, k + l, 2] = 255
-            expand_mask[i, k + l] = 255
+            if k + l <= width - 1:
+                image[i, k + l, 2] = 255
+                expand_mask[i, k + l] = 255
 
     return image, expand_mask
 

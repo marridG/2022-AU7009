@@ -72,7 +72,7 @@ class VideoHandler:
         if (self._USE_CACHE is False) or (self.video_frame_cnt != _frames_fn_cnt):
             self._save_frames()
 
-        if frame_idx >= self.video_frame_cnt - 1:
+        if frame_idx >= self.video_frame_cnt:
             raise IndexError(_err_msg % (self.video_frame_cnt, frame_idx))
         if os.path.exists(res_fn) is False:
             print("Frames Files Missing: \"%s\". Re-Saving Frames ..." % res_fn)
