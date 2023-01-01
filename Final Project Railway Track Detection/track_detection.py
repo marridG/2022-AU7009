@@ -65,7 +65,7 @@ class TrackDetection:
     def __init__(self, video_path: str, img_roi: np.ndarray, res_dir: str = "res", temp_dir: str = "temp",
                  _debug: bool = False, _use_cache: bool = True):
         self._DEBUG = _debug
-        self._USE_CACHE = (_debug is False) and _use_cache
+        self._USE_CACHE = _use_cache
 
         assert os.path.exists(video_path)
         self.video_path = video_path
@@ -121,7 +121,16 @@ class TrackDetection:
 
     @staticmethod
     def _apply_threshold(img):
-        edged = cv2.Canny(img, 50, 150)
+        _img_hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        _, _, _img_hsv_v = cv2.split(_img_hsv)
+        _img_hsv_v = _img_hsv_v.ravel()[np.flatnonzero(_img_hsv_v)]
+        _avg_v = sum(_img_hsv_v) / len(_img_hsv_v)
+        # print(_avg_v)
+        # exit(0)
+        if _avg_v <= 100:  # [daytime] 2=136; [night] 5=73, 7=59
+            edged = cv2.Canny(img, 30, 90)
+        else:
+            edged = cv2.Canny(img, 50, 150)
         res = np.zeros_like(edged)  # (H, W)
         res[edged == 255] = 1
 
@@ -153,6 +162,7 @@ class TrackDetection:
         )
         img_thresh_roi_trans = cv2.warpPerspective(src=img_thresh_roi, M=self.trans_src_2_dst,
                                                    dsize=img.shape[1::-1], flags=cv2.INTER_LINEAR)
+        # mask_track = mask_expand = img_area = np.zeros_like(img)
         # perform detection
         if self.left_line.detected and self.right_line.detected:  # when is NOT 1-ST frame
             _left_fit, _right_fit, _, _ = td_utils.find_line_by_previous(
@@ -164,7 +174,7 @@ class TrackDetection:
                 img=img, img_binary_trans=img_thresh_roi_trans,
                 trans_dst_2_src=self.trans_dst_2_src,
                 left_fit=_left_fit, right_fit=_right_fit)
-            print(mask_track.nonzero()[0].size)
+            # print(mask_track.nonzero()[0].size)
             if 5000 < mask_track.nonzero()[0].size:
                 left_fit = _left_fit
                 right_fit = _right_fit
@@ -260,16 +270,17 @@ class TrackDetection:
 
 
 if "__main__" == __name__:
-    roi = np.load("temp/VID-4-2_roi_res_arr_scaled__ver=2__len=30__ratio=0.600.npy")
-    obj = TrackDetection(video_path="data/4.mp4", img_roi=roi)
-    # obj.process_n_visualize_frame(frame_idx=0)
-    obj.process_video(frame_idx_start=300, frame_idx_end=600)
+    roi = np.load("temp/VID-7-2_roi_res_arr_scaled__ver=2__len=30__ratio=0.600.npy")
+    obj = TrackDetection(video_path="data/7.mp4", img_roi=roi, _debug=True)
+    # obj.process_n_visualize_frame(frame_idx=300)
+    # obj.process_video(frame_idx_start=300, frame_idx_end=600)
+    obj.process_video()
 
     # for file, roi_file, (f_simple, f_hard), video_flag in zip(
     #         ["data/%d.mp4" % idx for idx in range(1, 8)],
     #         ["temp/VID-%d-2_roi_res_arr_scaled__ver=2__len=30__ratio=0.600.npy" % idx for idx in range(1, 8)],
     #         [(0, 2900), (0, 3700), (0, 1000), (900, 0), (1500, 100), (600, 2100), (0, 2200)],
-    #         [False, True, False, True, True, False, True]
+    #         # [False, True, False, True, False, False, True]
     # ):
     #     roi = np.load(roi_file)
     #     obj = TrackDetection(video_path=file, img_roi=roi)
