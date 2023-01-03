@@ -1,4 +1,5 @@
 import os
+from tqdm import tqdm
 import numpy as np
 import cv2
 
@@ -7,6 +8,7 @@ class VideoHandler:
     def __init__(self, video_path: str, frames_dir: str = "frames", _use_cache: bool = True):
         assert os.path.exists(video_path)
         self.video_path = video_path
+        self.video_fullname = os.path.split(video_path)[-1]
         self.video_alias = "VID-" + os.path.splitext(os.path.split(video_path)[-1])[0]  # "data/1.mp4" -> "VID-1"
         self.video_fps = -1
         self.video_frame_shape_hw = (-1, -1)  # (height, width)
@@ -51,18 +53,11 @@ class VideoHandler:
     def _save_frames(self):
         print("Start Saving Frames of \"%s\" ..." % self.video_path)
         cap = cv2.VideoCapture(self.video_path)
-        ret, _frame = cap.read()
-        _frame_idx = 0
-        while True:
+        for _frame_idx in tqdm(range(self.video_frame_cnt)):
             res_fn = self._MID_RES_FN_TEMPLATE["frames"] % _frame_idx
-            cv2.imwrite(filename=res_fn, img=_frame)
             ret, _frame = cap.read()
-            if not ret:
-                print("=== All %d Frames are Saved to: \"%s\"" % (_frame_idx + 1, self.frames_dir))
-                break
-            _frame_idx += 1
-
-        self.video_frame_cnt = _frame_idx + 1
+            cv2.imwrite(filename=res_fn, img=_frame)
+        print("=== All %d Frames are Saved to: \"%s\"" % (self.video_frame_cnt, self.frames_dir))
 
     def get_frame_by_idx(self, frame_idx: int) -> np.ndarray:
         _frames_fn_cnt = len(os.listdir(self.frames_dir))
@@ -76,7 +71,15 @@ class VideoHandler:
             raise IndexError(_err_msg % (self.video_frame_cnt, frame_idx))
         if os.path.exists(res_fn) is False:
             print("Frames Files Missing: \"%s\". Re-Saving Frames ..." % res_fn)
-        return cv2.imread(res_fn)
+            self._save_frames()
+
+        res = cv2.imread(res_fn)
+        if res is None or self.video_frame_shape_hw != res.shape[:2]:
+            print("Frames Files Corrupted: \"%s\". Re-Saving Frames ..." % res_fn)
+            self._save_frames()
+            res = cv2.imread(res_fn)
+
+        return res
 
     def frames_to_video(self, frames: np.ndarray, res_path: str):
         # frames should be of shape (frames_cnt, frame_height, frame_width (, 3))
@@ -109,3 +112,8 @@ if "__main__" == __name__:
     t_frames = np.array([obj.get_frame_by_idx(_idx) for _idx in range(100)])
     obj.frames_to_video(frames=t_frames, res_path="res/test.mp4")
     print()
+
+    # obj = VideoHandler(video_path="data/VID-1-4_text_removal.mp4")
+    # obj.get_frame_by_idx(frame_idx=0)
+    # obj = VideoHandler(video_path="data/VID-6-4_text_removal.mp4")
+    # obj.get_frame_by_idx(frame_idx=0)
