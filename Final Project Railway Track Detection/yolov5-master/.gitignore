@@ -35,6 +35,12 @@ data/images/*
 !data/images/bus.jpg
 !data/*.sh
 
+# GuoZL
+data-custom/*
+data-custom/train/images/*
+data-custom/train/labels/*
+!data-custom/*.yaml
+
 results*.csv
 
 # Datasets -------------------------------------------------------------------------------------------------------------
