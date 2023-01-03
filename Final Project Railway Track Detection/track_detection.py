@@ -243,7 +243,6 @@ class TrackDetection:
             res_mask_expand.append(_res_mask_expand)
             # if 0 == _frame_idx % 20:
             #     print("Processed Frame #%d" % _frame_idx)
-            _frame_idx += 1
 
         res = np.array(res)  # (frame_cnt, height, width, 3)
         res_trans = np.array(res_trans)  # (frame_cnt, height, width)
