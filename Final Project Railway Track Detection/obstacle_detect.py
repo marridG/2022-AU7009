@@ -112,11 +112,11 @@ class ObstacleDetect:
         for _x_min, _y_min, _x_max, _y_max in obj_bbox_obstacle_track:  # obstacle objects of track
             cv2.rectangle(img_result,
                           color=(0, 255, 0),  # BGR, green
-                          pt1=(_x_min, _y_min), pt2=(_x_max, _y_max), thickness=3)
+                          pt1=(_x_min, _y_min), pt2=(_x_max, _y_max), thickness=2)
 
         for _x_min, _y_min, _x_max, _y_max in obj_bbox_obstacle_expand:  # obstacle objects of expand
             cv2.rectangle(img_result,
-                          color=(0, 255, 0),  # BGR, red
+                          color=(0, 0, 255),  # BGR, red
                           pt1=(_x_min, _y_min), pt2=(_x_max, _y_max), thickness=2)
 
         # construct full res
@@ -150,30 +150,47 @@ class ObstacleDetect:
 
         return img_result, img_full_result
 
-    def process_video(self):
+    def process_video(self, start_idx=0, end_idx=3785):
         res = []
-        _frame_idx_iterator = tqdm(range(0, self.video_handler.video_frame_cnt))
+        # _frame_idx_iterator = tqdm(range(0, self.video_handler.video_frame_cnt))
+        _frame_idx_iterator = tqdm(range(start_idx, end_idx))
         for _frame_idx in _frame_idx_iterator:
             _frame = self.video_handler.get_frame_by_idx(frame_idx=_frame_idx)
             _, _res_frame = self._process_frame(img=_frame)
             res.append(_res_frame)
 
-        res = np.array(res)  # (frame_cnt, height, width, 3)
+        # res = np.array(res)  # (frame_cnt, height, width, 3)
         res_path = self._MID_RES_FN_TEMPLATE["res_vid"]
-        self.video_handler.frames_to_video(frames=res, res_path=res_path)
+
+        # self.video_handler.frames_to_video(frames=res, res_path=res_path)
+
+        fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')  # output as mp4
+        cap_fps = 21  # set FPS
+        size = (res[0].shape[1], res[0].shape[0])  # (height, width) -> (width, height)
+        video = cv2.VideoWriter(filename=res_path, fourcc=fourcc, fps=cap_fps, frameSize=size, isColor=True)
+
+        for _frame in res:
+            video.write(_frame)
+        video.release()
+        print("All %d Frames have been Saved to Video \"%s\" (FPS=%d)" % (len(res), res_path, 21))
+
         print("Results Saved: \"%s\"" % res_path)
 
 
 if "__main__" == __name__:
-    # obj = ObstacleDetect(video_path="data/4.mp4")
-    # obj._process_frame(img=cv2.imread("frames/VID-4/VID-4-0_frame_0.png"), _vis_only_path="res/temp-4-0.png")
+    # obj = ObstacleDetect(video_path="data/2.mp4")
+    # obj._process_frame(img=cv2.imread("frames/VID-2/VID-2-0_frame_1022.png"), _vis_only_path="res/temp-2-1022.png")
+    #
+    # # obj = ObstacleDetect(video_path="data/4.mp4")
+    # # obj._process_frame(img=cv2.imread("frames/VID-4/VID-4-0_frame_0.png"), _vis_only_path="res/temp-4-0.png")
     #
     # obj = ObstacleDetect(video_path="data/7.mp4")
-    # obj._process_frame(img=cv2.imread("frames/VID-7/VID-7-0_frame_0.png"), _vis_only_path="res/temp-7-0.png")
+    # obj._process_frame(img=cv2.imread("frames/VID-7/VID-7-0_frame_1010.png"), _vis_only_path="res/temp-7-1010.png")
 
-    obj = ObstacleDetect(video_path="data/4.mp4")
-    obj.process_video()
-    print("========================================")
-    obj = ObstacleDetect(video_path="data/7.mp4")
-    obj.process_video()
-    print("========================================")
+    # obj = ObstacleDetect(video_path="data/2.mp4")
+    # obj.process_video(start_idx=0, end_idx=400)
+    # print("========================================")
+    # obj = ObstacleDetect(video_path="data/7.mp4")
+    # obj.process_video(start_idx=3000, end_idx=3400)
+    # print("========================================")
+    pass

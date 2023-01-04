@@ -191,6 +191,6 @@ if "__main__" == __name__:
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     _ = obj.infer_rgb_img(
         img_rgb=im,
-        _vis_only_title_subfix="for \"1.mp4\" (Frame #0)",
+        _vis_only_title_subfix="for \"6.mp4\" (Frame #0)",
         _vis_only_path="res/yolo_res__VID-6-opt-0_frame_0.png"
     )
