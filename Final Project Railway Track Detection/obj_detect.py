@@ -101,9 +101,9 @@ class ObjectDetect:
 
     def infer_rgb_img(self, img_rgb: np.ndarray,
                       conf_thresh: float = 0.3, iou_thresh: float = 0.3,
-                      _vis_only_title_subfix: str = "Result",
-                      _vis_only_path: str = "res/yolo_res.png") -> np.ndarray:
-        do_visualize = (0 < len(_vis_only_title_subfix)) and (0 < len(_vis_only_path))
+                      _vis_only_title_subfix: str = None,
+                      _vis_only_path: str = None) -> np.ndarray:
+        do_visualize = (_vis_only_title_subfix is not None) and (_vis_only_path is not None)
         if do_visualize:
             assert os.path.exists(os.path.split(_vis_only_path)[0])
             fig, _ax = plt.subplots(1, 2, figsize=(12, 4.5))
@@ -142,23 +142,23 @@ class ObjectDetect:
 
         if do_visualize:
             _img_rgb_show = img_rgb.copy()
-            for _x_min, _y_min, _x_max_, _y_max, _, _ in res_yolo_arr_filtered:
+            for _x_min, _y_min, _x_max, _y_max, _, _ in res_yolo_arr_filtered:
                 cv2.rectangle(_img_rgb_show,
                               color=(0, 255, 0),  # BGR, green
-                              pt1=(_x_min, _y_min), pt2=(_x_max_, _y_max), thickness=1)
-            for _x_min, _y_min, _x_max_, _y_max, _, _ in res_fine_tuned_arr_filtered:
+                              pt1=(_x_min, _y_min), pt2=(_x_max, _y_max), thickness=1)
+            for _x_min, _y_min, _x_max, _y_max, _, _ in res_fine_tuned_arr_filtered:
                 cv2.rectangle(_img_rgb_show,
                               color=(255, 0, 0),  # BGR, blue
-                              pt1=(_x_min, _y_min), pt2=(_x_max_, _y_max), thickness=1)
+                              pt1=(_x_min, _y_min), pt2=(_x_max, _y_max), thickness=1)
             _img_show = cv2.cvtColor(_img_rgb_show, cv2.COLOR_RGB2BGR)
             # ax[0].scatter([0], [1])
             ax[0].imshow(_img_show), ax[0].set_xlabel("(a) YOLOv5s (green) & YOLOv5s-Fine-Tuned (blue)")
 
             _img_rgb_show = img_rgb.copy()
-            for _x_min, _y_min, _x_max_, _y_max in res:
+            for _x_min, _y_min, _x_max, _y_max in res:
                 cv2.rectangle(_img_rgb_show,
                               color=(0, 0, 255),  # BGR, red
-                              pt1=(_x_min, _y_min), pt2=(_x_max_, _y_max), thickness=1)
+                              pt1=(_x_min, _y_min), pt2=(_x_max, _y_max), thickness=1)
             _img_show = cv2.cvtColor(_img_rgb_show, cv2.COLOR_RGB2BGR)
             ax[1].imshow(_img_show), ax[1].set_xlabel(r"(b) NMS Result (conf$\geq$%.3f, iou$\geq$%.3f)"
                                                       % (conf_thresh, iou_thresh))
@@ -177,11 +177,20 @@ class ObjectDetect:
 
 
 if "__main__" == __name__:
+    # obj = ObjectDetect()
+    # im = cv2.imread("frames/VID-1-opt/VID-1-opt-0_frame_0.png")
+    # im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    # _ = obj.infer_rgb_img(
+    #     img_rgb=im,
+    #     _vis_only_title_subfix="for \"1.mp4\" (Frame #0)",
+    #     _vis_only_path="res/yolo_res__VID-1-opt-0_frame_0.png"
+    # )
+
     obj = ObjectDetect()
-    im = cv2.imread("frames/VID-1-opt/VID-1-opt-0_frame_0.png")
+    im = cv2.imread("frames/VID-6-opt/VID-6-opt-0_frame_0.png")
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     _ = obj.infer_rgb_img(
         img_rgb=im,
         _vis_only_title_subfix="for \"1.mp4\" (Frame #0)",
-        _vis_only_path="res/yolo_res__VID-1-opt-0_frame_0.png"
+        _vis_only_path="res/yolo_res__VID-6-opt-0_frame_0.png"
     )
