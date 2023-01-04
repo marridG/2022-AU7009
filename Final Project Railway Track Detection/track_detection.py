@@ -214,6 +214,9 @@ class TrackDetection:
         frame = self.video_handler.get_frame_by_idx(frame_idx=frame_idx)
         self._process_frame(img=frame, _vis_title_only_frame_idx=frame_idx)
 
+    def process_img(self, img: np.ndarray):
+        return self._process_frame(img=img)
+
     def process_video(self, frame_idx_start: int = 0, frame_idx_end: int = None) \
             -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         res = []  # frame_cnt * (height, width, 3)

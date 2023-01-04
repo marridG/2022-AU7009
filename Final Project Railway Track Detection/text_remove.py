@@ -162,14 +162,16 @@ class TextRemove:
 
         return img_res
 
-    def process_frame(self, img: np.ndarray, vid_fullname: str, vid_alias: str, frame_idx: int) -> np.ndarray:
-        res = self._process_frame(
+    def process_n_visualize_frame(self, img: np.ndarray, vid_fullname: str, vid_alias: str, frame_idx: int):
+        self._process_frame(
             img=img,
             _vis_title_only_vid_fullname=vid_fullname,
             _vis_title_only_vid_alias=vid_alias,
             _vis_title_only_frame_idx=frame_idx
         )
-        return res
+
+    def process_img(self, img: np.ndarray):
+        return self._process_frame(img=img)
 
     def process_video(self, handler: video_handler.VideoHandler):
         res = []
@@ -200,8 +202,8 @@ if "__main__" == __name__:
             [False, False, False, False, True, True, True]):
         obj = TextRemove()
         h = video_handler.VideoHandler(video_path=file)
-        obj.process_frame(img=h.get_frame_by_idx(frame_idx=f),
-                          vid_fullname=h.video_fullname, vid_alias=h.video_alias, frame_idx=f)
+        obj.process_n_visualize_frame(img=h.get_frame_by_idx(frame_idx=f),
+                                      vid_fullname=h.video_fullname, vid_alias=h.video_alias, frame_idx=f)
         if flag is True:
             obj.process_video(handler=h)
         print("========================================")
