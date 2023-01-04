@@ -35,12 +35,6 @@ data/images/*
 !data/images/bus.jpg
 !data/*.sh
 
-# GuoZL
-data-custom/*
-data-custom/train/images/*
-data-custom/train/labels/*
-!data-custom/*.yaml
-
 results*.csv
 
 # Datasets -------------------------------------------------------------------------------------------------------------
@@ -260,3 +254,10 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
+
+# GuoZL
+!res_models/*.pt
+data-custom/*
+data-custom/train/images/*
+data-custom/train/labels/*
+!data-custom/*.yaml
