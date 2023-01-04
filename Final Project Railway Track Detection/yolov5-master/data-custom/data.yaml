@@ -1,0 +1,13 @@
+train: ./data-custom/train/images
+val: ./data-custom/valid/images
+test: #./data-custom/test/images
+
+nc: 6
+names: ['bus', 'car', 'motorcycle', 'person', 'train', 'truck']
+
+roboflow:
+  workspace: au7009
+  project: track-obstacles
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/au7009/track-obstacles/dataset/1
