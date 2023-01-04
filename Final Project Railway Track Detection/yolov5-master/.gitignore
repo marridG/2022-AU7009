@@ -258,6 +258,8 @@ fabric.properties
 # GuoZL
 !res_models/*.pt
 data-custom/*
-data-custom/train/images/*
-data-custom/train/labels/*
+!data-custom/train/images/*.png
+!data-custom/train/labels/*.txt
+!data-custom/valid/images/*.png
+!data-custom/valid/labels/*.txt
 !data-custom/*.yaml
