@@ -6,8 +6,8 @@ Final Project Railway Track Detection/frames/*
 Final Project Railway Track Detection/temp/*
 Final Project Railway Track Detection/res/*.png
 Final Project Railway Track Detection/res/*.mp4
-Final Project Railway Track Detection/report/*.ppt
-Final Project Railway Track Detection/report/*.pptx
+Final Project Railway Track Detection/report/imgs/*.ppt
+Final Project Railway Track Detection/report/imgs/*.pptx
 
 
 # IntelliJ project files
@@ -154,4 +154,3 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-
