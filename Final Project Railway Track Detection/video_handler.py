@@ -108,12 +108,12 @@ class VideoHandler:
 
 
 if "__main__" == __name__:
-    obj = VideoHandler(video_path="data/1.mp4")
-    t_frames = np.array([obj.get_frame_by_idx(_idx) for _idx in range(100)])
-    obj.frames_to_video(frames=t_frames, res_path="res/test.mp4")
-    print()
+    # obj = VideoHandler(video_path="data/1.mp4")
+    # t_frames = np.array([obj.get_frame_by_idx(_idx) for _idx in range(100)])
+    # obj.frames_to_video(frames=t_frames, res_path="res/test.mp4")
+    # print()
 
-    # obj = VideoHandler(video_path="data/VID-1-4_text_removal.mp4")
-    # obj.get_frame_by_idx(frame_idx=0)
-    # obj = VideoHandler(video_path="data/VID-6-4_text_removal.mp4")
-    # obj.get_frame_by_idx(frame_idx=0)
+    obj = VideoHandler(video_path="data/1-opt.mp4")
+    obj.get_frame_by_idx(frame_idx=0)
+    obj = VideoHandler(video_path="data/6-opt.mp4")
+    obj.get_frame_by_idx(frame_idx=0)

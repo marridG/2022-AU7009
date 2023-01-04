@@ -251,6 +251,7 @@ def draw_area(img, img_binary_trans, trans_dst_2_src, left_fit, right_fit):
     img = np.array(img)
     newwarp = cv2.warpPerspective(color_warp, trans_dst_2_src, (img.shape[1], img.shape[0]))
     newwarp, mask_expand = expand(newwarp)
+    mask_expand = mask_expand.astype(np.uint8)
     mask_track = cv2.warpPerspective(mask_track, trans_dst_2_src, (img.shape[1], img.shape[0]))
     # Combine the result with the original image
     result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
