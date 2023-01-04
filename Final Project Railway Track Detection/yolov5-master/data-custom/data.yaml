@@ -1,6 +1,6 @@
-train: ../train/images
-val: ../valid/images
-test: ../test/images
+train: ./data-custom/train/images
+val: ./data-custom/valid/images
+test: #./data-custom/test/images
 
 nc: 6
 names: ['bus', 'car', 'motorcycle', 'person', 'train', 'truck']
