@@ -1,6 +1,6 @@
 # 2022 AU7009 Projects
 
-AU7009 Digital Image Processing, SJTU, 2022 Fall
+AU7009 Digital Image Processing (for Graduate Students), SJTU, 2022 Fall
 
 By **Prof. L.S. Wang, T.Fang**
 
