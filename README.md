@@ -10,9 +10,9 @@ By **Prof. L.S. Wang, T.Fang**
 
 <!-- MarkdownTOC -->
 
-- [Project 1 Thresholding Edge Detection](#project-1-thresholding-edge-detection)
-- [Project 2 Image Processing](#project-2-image-processing)
-- [Final Project](#final-project)
+- [Project 1 - Thresholding Edge Detection](#project-1---thresholding-edge-detection)
+- [Project 2 - Image Processing](#project-2---image-processing)
+- [Final Project - Railway Track Detection](#final-project---railway-track-detection)
 
 <!-- /MarkdownTOC -->
 
@@ -20,7 +20,7 @@ By **Prof. L.S. Wang, T.Fang**
 
 
 
-### Project 1 Thresholding Edge Detection
+### Project 1 - Thresholding Edge Detection
 
 + Codes: [`~/Hw 1 Thresholding Edge Detection/*`](https://github.com/marridG/2022-AU7009/tree/master/Hw%201%20Thresholding%20Edge%20Detection)
 + Report: [Markdown](https://github.com/marridG/2022-AU7009/blob/master/Hw%201%20Thresholding%20Edge%20Detection/report/report.md), [Markdown-Compiled PDF](https://github.com/marridG/2022-AU7009/blob/master/Hw%201%20Thresholding%20Edge%20Detection/report/report.pdf)
@@ -40,7 +40,7 @@ By **Prof. L.S. Wang, T.Fang**
   ```
 
 
-### Project 2 Image Processing
+### Project 2 - Image Processing
 
 + Codes: [`~/Hw 2 Image Processing/*`](https://github.com/marridG/2022-AU7009/tree/master/Hw%202%20Image%20Processing)
 + Report: [Markdown](https://github.com/marridG/2022-AU7009/blob/master/Hw%202%20Image%20Processing/report/report.md), [Markdown-Compiled PDF](https://github.com/marridG/2022-AU7009/blob/master/Hw%202%20Image%20Processing/report/report.pdf)
@@ -48,7 +48,7 @@ By **Prof. L.S. Wang, T.Fang**
 
 
 
-### Final Project
+### Final Project - Railway Track Detection
 
 + Codes: [`~/Final Project Railway Track Detection/*`](https://github.com/marridG/2022-AU7009/tree/master/Final%20Project%20Railway%20Track%20Detection)
 + Report: [Markdown](https://github.com/marridG/2022-AU7009/blob/master/Final%20Project%20Railway%20Track%20Detection/report/report.md), [Markdown-Compiled PDF](https://github.com/marridG/2022-AU7009/blob/master/Final%20Project%20Railway%20Track%20Detection/report/report.pdf)
